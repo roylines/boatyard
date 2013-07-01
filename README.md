@@ -1,4 +1,1 @@
-boatyard
-========
-
-provision the digital ocean
+# boatyard

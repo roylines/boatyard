@@ -1,0 +1,39 @@
+#!/bin/bash
+
+if [ $# -ne 1 ]
+then
+  echo "Usage: launch <name>"
+  exit 1
+fi
+
+DROPLET_NAME=$1
+DROPLET_SIZEID=66
+DROPLET_IMAGEID=365680 # centos 6.4 x64
+DROPLET_REGIONID=2
+
+tugboat info $DROPLET_NAME
+
+if [ $? -ne 0 ]
+	then
+	set -e
+	tugboat create $DROPLET_NAME -s $DROPLET_SIZEID -i $DROPLET_IMAGEID -r $DROPLET_REGIONID -k $DIGITAL_OCEAN_SSH
+fi
+
+tugboat wait $DROPLET_NAME
+
+IP=`tugboat info $DROPLET_NAME | grep IP | awk '{ print $2 }'`
+echo "$DROPLET_NAME is launched on $IP"
+
+ssh-keygen -R $IP
+
+ssh root@$IP "yum -y update"
+
+ssh root@$IP "rpm -ivh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
+
+ssh root@$IP "yum -y install puppet"
+
+ssh root@$IP "mkdir -p /plans"
+
+scp ./plans/base.pp root@$IP:/plans/base.pp
+
+ssh root@$IP "puppet apply /plans/base.pp"
