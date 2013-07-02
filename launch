@@ -13,9 +13,11 @@ DROPLET_REGIONID=2
 
 tugboat info $DROPLET_NAME
 
-if [ $? -ne 0 ]
+DROPLET_EXISTS=$?
+set -e
+
+if [ $DROPLET_EXISTS -ne 0 ]
 	then
-	set -e
 	tugboat create $DROPLET_NAME -s $DROPLET_SIZEID -i $DROPLET_IMAGEID -r $DROPLET_REGIONID -k $DIGITAL_OCEAN_SSH
 fi
 
@@ -24,16 +26,20 @@ tugboat wait $DROPLET_NAME
 IP=`tugboat info $DROPLET_NAME | grep IP | awk '{ print $2 }'`
 echo "$DROPLET_NAME is launched on $IP"
 
-ssh-keygen -R $IP
+if [ $DROPLET_EXISTS -ne 0 ]
+	then
+	ssh-keygen -R $IP
 
-ssh root@$IP "yum -y update"
+	sleep 5
+	ssh root@$IP "/usr/bin/yum -y update"
+	ssh root@$IP "/usr/bin/yum -y update"
+	ssh root@$IP "/bin/rpm -ivh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
+	ssh root@$IP "/usr/bin/yum -y install puppet"
+	ssh root@$IP "/usr/bin/puppet module install maestrodev/wget"
+	ssh root@$IP "/bin/mkdir -p /plans"
+fi
 
-ssh root@$IP "rpm -ivh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
+scp ./plans/standard.pp root@$IP:/plans/standard.pp
+ssh root@$IP "puppet apply /plans/standard.pp"
 
-ssh root@$IP "yum -y install puppet"
-
-ssh root@$IP "mkdir -p /plans"
-
-scp ./plans/base.pp root@$IP:/plans/base.pp
-
-ssh root@$IP "puppet apply /plans/base.pp"
+tugboat info $DROPLET_NAME
