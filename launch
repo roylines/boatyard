@@ -1,8 +1,8 @@
 #!/bin/bash
 
-if [ $# -ne 1 ]
+if [ $# -ne 2 ]
 then
-  echo "Usage: launch <name>"
+  echo "Usage: launch <name> <type>"
   exit 1
 fi
 
@@ -10,6 +10,7 @@ DROPLET_NAME=$1
 DROPLET_SIZEID=66
 DROPLET_IMAGEID=365680 # centos 6.4 x64
 DROPLET_REGIONID=2
+SHIP_TYPE=$2
 
 tugboat info $DROPLET_NAME
 
@@ -35,9 +36,10 @@ if [ $DROPLET_EXISTS -ne 0 ]
 
 	ssh-keygen -R $IP # remove old ipaddress from known hosts as it's probably changed
 
-	sleep 5 # sometimes ssh isn't ready, so wait a little
+	echo 'sleeping for 15 seconds whilst ssh comes up...'
+	sleep 15 # sometimes ssh isn't ready, so wait a little
 
-	ssh root@$IP "/usr/bin/yum -y update"
+	echo 'updating...'
 	ssh root@$IP "/usr/bin/yum -y update"
 	ssh root@$IP "/bin/rpm -ivh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
 	ssh root@$IP "/usr/bin/yum -y install puppet"
@@ -45,8 +47,10 @@ if [ $DROPLET_EXISTS -ne 0 ]
 fi
 
 # apply puppet plans
-scp ./plans/standard.pp root@$IP:/plans/standard.pp
-ssh root@$IP "puppet apply /plans/standard.pp"
+pushd "./plans/$SHIP_TYPE"
+scp -r "." root@$IP:/plans
+popd
+ssh root@$IP "puppet apply /plans/$SHIP_TYPE/default.pp"
 
 # finished
 tugboat info $DROPLET_NAME
