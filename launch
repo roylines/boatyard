@@ -16,30 +16,37 @@ tugboat info $DROPLET_NAME
 DROPLET_EXISTS=$?
 set -e
 
+# create droplet if it doesn't exist
 if [ $DROPLET_EXISTS -ne 0 ]
 	then
 	tugboat create $DROPLET_NAME -s $DROPLET_SIZEID -i $DROPLET_IMAGEID -r $DROPLET_REGIONID -k $DIGITAL_OCEAN_SSH
 fi
 
+# wait for active
 tugboat wait $DROPLET_NAME
 
+# work out ipaddress
 IP=`tugboat info $DROPLET_NAME | grep IP | awk '{ print $2 }'`
 echo "$DROPLET_NAME is launched on $IP"
 
+# update and provision puppet if droplet just created
 if [ $DROPLET_EXISTS -ne 0 ]
 	then
-	ssh-keygen -R $IP
 
-	sleep 5
+	ssh-keygen -R $IP # remove old ipaddress from known hosts as it's probably changed
+
+	sleep 5 # sometimes ssh isn't ready, so wait a little
+
 	ssh root@$IP "/usr/bin/yum -y update"
 	ssh root@$IP "/usr/bin/yum -y update"
 	ssh root@$IP "/bin/rpm -ivh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
 	ssh root@$IP "/usr/bin/yum -y install puppet"
-	ssh root@$IP "/usr/bin/puppet module install maestrodev/wget"
 	ssh root@$IP "/bin/mkdir -p /plans"
 fi
 
+# apply puppet plans
 scp ./plans/standard.pp root@$IP:/plans/standard.pp
 ssh root@$IP "puppet apply /plans/standard.pp"
 
+# finished
 tugboat info $DROPLET_NAME
