@@ -9,7 +9,7 @@ fi
 DROPLET_NAME=$1
 DROPLET_SIZEID=66
 DROPLET_IMAGEID=365680 # centos 6.4 x64
-DROPLET_REGIONID=2
+DROPLET_REGIONID=1
 SHIP_TYPE=$2
 
 tugboat info $DROPLET_NAME
@@ -30,27 +30,27 @@ tugboat wait $DROPLET_NAME
 IP=`tugboat info $DROPLET_NAME | grep IP | awk '{ print $2 }'`
 echo "$DROPLET_NAME is launched on $IP"
 
-# update and provision puppet if droplet just created
 if [ $DROPLET_EXISTS -ne 0 ]
 	then
-
-	ssh-keygen -R $IP # remove old ipaddress from known hosts as it's probably changed
-
-	echo 'sleeping for 15 seconds whilst ssh comes up...'
-	sleep 15 # sometimes ssh isn't ready, so wait a little
-
-	echo 'updating...'
-	ssh root@$IP "/usr/bin/yum -y update"
-	ssh root@$IP "/bin/rpm -ivh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
-	ssh root@$IP "/usr/bin/yum -y install puppet"
-	ssh root@$IP "/bin/mkdir -p /plans"
+	# remove old ipaddress from known hosts as it's probably changed ?
+	ssh-keygen -R $IP 
 fi
 
+# update
+ssh root@$IP "/usr/bin/yum -y update"
+
+# install puppet
+set +e
+ssh root@$IP "/bin/rpm -Uvh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
+set -e
+ssh root@$IP "/usr/bin/yum -y install puppet"
+
 # apply puppet plans
+ssh root@$IP "/bin/mkdir -p /plans"
 pushd "./plans/$SHIP_TYPE"
 scp -r "." root@$IP:/plans
 popd
-ssh root@$IP "puppet apply /plans/$SHIP_TYPE/default.pp"
+ssh root@$IP "puppet apply /plans/default.pp"
 
 # finished
 tugboat info $DROPLET_NAME

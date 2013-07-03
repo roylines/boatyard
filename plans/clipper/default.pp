@@ -1,15 +1,4 @@
 class base {
-	group { "pirates":
-		ensure => present,
-		gid => 1000
-	}
-	user { "blackbeard":
-		ensure => present,
-		gid => "pirates",
-		membership => minimum,
-		shell => "/bin/bash",
-		require => Group["pirates"]
-	}
 	package { "ntp":
 	  ensure  => installed
 	}
@@ -25,9 +14,36 @@ class nginx {
 		enabled => 1,
 		gpgcheck => 0
 	}
+	package { "zlib":
+	  ensure  => installed,
+	}
+	package { "pcre":
+	  ensure  => installed,
+	}
+	package { "openssl":
+	  ensure  => installed,
+	}
 	package { "nginx":
 	  ensure  => installed,
 	  require => Yumrepo["nginxrepo"]
+	}
+	file { "/etc/nginx/nginx.conf":
+		source => "/plans/nginx.conf",
+		require => [Package["nginx"], Package["zlib"], Package["pcre"], Package["openssl"]]
+	}
+	exec { "restart-nginx":								
+		command => "/bin/kill -QUIT $( cat /var/run/nginx.pid )",
+		user => root,
+		onlyif => '/usr/bin/test -f /var/run/nginx.pid',
+		subscribe => File["/etc/nginx/nginx.conf"],
+		refreshonly => true,
+		require => File["/etc/nginx/nginx.conf"]
+	}
+	exec { "start-nginx":								
+		command => "/usr/sbin/nginx",
+		creates => "/var/run/nginx.pid",
+		user => root,
+		require => File["/etc/nginx/nginx.conf"]
 	}
 }
 
@@ -55,6 +71,8 @@ class firewall {
 	}
 	exec { "fw-restart":								
 		command => "/sbin/service iptables restart",
+		subscribe => File["/etc/sysconfig/iptables"],
+		refreshonly => true,
 		user => root,
 		require => File["/etc/sysconfig/iptables"]
 	}	
