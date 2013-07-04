@@ -37,10 +37,13 @@ if [ $DROPLET_EXISTS -ne 0 ]
 fi
 
 # update
+echo 'updating droplet'
 ssh root@$IP "/usr/bin/yum -y update"
 
 # install puppet
+echo 'installing puppet'
 set +e
+#ssh root@$IP "/bin/rpm -Uvh http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm"
 ssh root@$IP "/bin/rpm -Uvh http://yum.puppetlabs.com/el/6/products/i386/puppetlabs-release-6-7.noarch.rpm"
 set -e
 ssh root@$IP "/usr/bin/yum -y install puppet"
