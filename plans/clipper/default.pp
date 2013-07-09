@@ -35,19 +35,17 @@ class nginx {
 		source => "/plans/nginx.conf",
 		require => [Package["nginx"], Package["zlib"], Package["pcre"], Package["openssl"]]
 	}
+	exec { "start-nginx":								
+		command => "/etc/init.d/nginx start",
+		creates => "/var/run/nginx.pid",
+		require => File["/etc/nginx/nginx.conf"]
+	}
 	exec { "restart-nginx":								
-		command => "/bin/kill -QUIT $( cat /var/run/nginx.pid )",
-		user => root,
+		command => "/etc/init.d/nginx restart",
 		onlyif => '/usr/bin/test -f /var/run/nginx.pid',
 		subscribe => File["/etc/nginx/nginx.conf"],
 		refreshonly => true,
-		require => File["/etc/nginx/nginx.conf"]
-	}
-	exec { "start-nginx":								
-		command => "/usr/sbin/nginx",
-		creates => "/var/run/nginx.pid",
-		user => root,
-		require => File["/etc/nginx/nginx.conf"]
+		require => Exec["start-nginx"]
 	}
 }
 
@@ -126,6 +124,28 @@ class redis {
 }
 
 class nodejs {
+	user { "nodeuser":
+		ensure => present,
+		comment => "user that nodejs applications run under",
+		managehome => true
+	}
+	file { "/home/nodeuser/bootstrap":
+		ensure => directory,
+		require => User["nodeuser"]
+	}
+	file { "/home/nodeuser/bootstrap/app.js":
+		source => "/plans/app.js",
+		require => File["/home/nodeuser/bootstrap"]
+	}
+	file { "/home/nodeuser/current":
+		ensure => link,
+		target => "/home/nodeuser/bootstrap",
+		require => File['/home/nodeuser/bootstrap/app.js']
+	}
+	file { "/etc/init.d/forever":
+		mode	=> 700,
+		source => "/plans/forever.init.d"
+	}
 	exec { "get-nave":								
 		command => "/usr/bin/wget https://raw.github.com/isaacs/nave/master/nave.sh -O /usr/local/bin/nave",
 		creates => "/usr/local/bin/nave",
@@ -140,6 +160,28 @@ class nodejs {
 		creates => "/usr/local/bin/node",
 		user => root,
 		require => File['/usr/local/bin/nave']
+	}
+	exec { "install-forever":								
+		command => "/usr/local/bin/npm install forever -g",
+		creates => "/usr/local/bin/forever",
+		user => root,
+		require => Exec['node']
+	}
+	exec { "chkconfig-forever":								
+		command => "/sbin/chkconfig --level 345 forever on",
+		creates => "/etc/rc3.d/S81forever",
+		user => root,
+		require => File['/etc/init.d/forever']
+	}
+	exec { "start-forever":								
+		command => "/etc/init.d/forever start",
+		creates => "/var/run/forever.pid",
+		user => root,
+		require => [
+			File["/etc/init.d/forever"], 
+			Exec["install-forever"], 
+			File["/home/nodeuser/current"]
+		]
 	}
 }
 
