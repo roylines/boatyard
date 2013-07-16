@@ -124,6 +124,9 @@ class redis {
 }
 
 class nodejs {
+	package { "gcc-c++":
+		ensure => installed
+	}	
 	user { "nodeuser":
 		ensure => present,
 		comment => "user that nodejs applications run under",
@@ -152,8 +155,8 @@ class nodejs {
 		user => root
 	}
 	file { "/usr/local/bin/nave":
-  	mode => 700,
-  	require => Exec['get-nave']
+  		mode => 700,
+  		require => Exec['get-nave']
 	}
 	exec { "node":								
 		command => "/usr/local/bin/nave usemain 0.10.12",
