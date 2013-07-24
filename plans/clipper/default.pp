@@ -132,6 +132,12 @@ class nodejs {
 		comment => "user that nodejs applications run under",
 		managehome => true
 	}
+	file { "/home/nodeuser":
+		ensure => directory,
+		group => 'nodeuser',
+		owner => 'nodeuser',
+		require => User["nodeuser"]
+	}
 	file { "/home/nodeuser/bootstrap":
 		ensure => directory,
 		require => User["nodeuser"]
@@ -144,10 +150,6 @@ class nodejs {
 		ensure => link,
 		target => "/home/nodeuser/bootstrap",
 		require => File['/home/nodeuser/bootstrap/app.js']
-	}
-	file { "/etc/init.d/forever":
-		mode	=> 700,
-		source => "/plans/forever.init.d"
 	}
 	exec { "get-nave":								
 		command => "/usr/bin/wget https://raw.github.com/isaacs/nave/master/nave.sh -O /usr/local/bin/nave",
@@ -164,28 +166,20 @@ class nodejs {
 		user => root,
 		require => File['/usr/local/bin/nave']
 	}
-	exec { "install-forever":								
-		command => "/usr/local/bin/npm install forever -g",
-		creates => "/usr/local/bin/forever",
+	exec { "install-pm2":		
+	 	environment => 'HOME=/root',					
+		command => "/usr/local/bin/npm install -g pm2",
+		creates => "/usr/local/bin/pm2",
 		user => root,
 		require => Exec['node']
 	}
-	exec { "chkconfig-forever":								
-		command => "/sbin/chkconfig --level 345 forever on",
-		creates => "/etc/rc3.d/S81forever",
-		user => root,
-		require => File['/etc/init.d/forever']
-	}
-	exec { "start-forever":								
-		command => "/etc/init.d/forever start",
-		creates => "/var/run/forever.pid",
-		user => root,
-		require => [
-			File["/etc/init.d/forever"], 
-			Exec["install-forever"], 
-			File["/home/nodeuser/current"]
-		]
-	}
+	exec { "start-pm2":								
+	 	environment => 'HOME=/home/nodeuser',					
+		command => "/usr/local/bin/pm2 start app.js -i max",
+		cwd => "/home/nodeuser/current",
+		user => nodeuser,
+		require => [Exec['install-pm2'], File['/home/nodeuser/current']]
+	}	
 }
 
 include firewall
