@@ -31,22 +31,18 @@ class nginx {
 	  ensure  => installed,
 	  require => Yumrepo["nginxrepo"]
 	}
-	file { "/etc/nginx/nginx.conf":
-		source => "/plans/nginx.conf",
-		require => [Package["nginx"], Package["zlib"], Package["pcre"], Package["openssl"]]
-	}
 	exec { "start-nginx":								
 		command => "/etc/init.d/nginx start",
 		creates => "/var/run/nginx.pid",
-		require => File["/etc/nginx/nginx.conf"]
+		require => Package["nginx"]
 	}
-	exec { "restart-nginx":								
-		command => "/etc/init.d/nginx restart",
-		onlyif => '/usr/bin/test -f /var/run/nginx.pid',
-		subscribe => File["/etc/nginx/nginx.conf"],
-		refreshonly => true,
-		require => Exec["start-nginx"]
-	}
+	# exec { "restart-nginx":								
+	# 	command => "/etc/init.d/nginx restart",
+	# 	onlyif => '/usr/bin/test -f /var/run/nginx.pid',
+	# 	subscribe => File["/etc/nginx/nginx.conf"],
+	# 	refreshonly => true,
+	# 	require => Exec["start-nginx"]
+	# }
 }
 
 class redis {
@@ -138,19 +134,45 @@ class nodejs {
 		owner => 'nodeuser',
 		require => User["nodeuser"]
 	}
-	file { "/home/nodeuser/bootstrap":
+	file { "/home/nodeuser/.ssh":
 		ensure => directory,
-		require => User["nodeuser"]
+		group => 'nodeuser',
+		owner => 'nodeuser',
+		require => File["/home/nodeuser"]
 	}
-	file { "/home/nodeuser/bootstrap/app.js":
-		source => "/plans/app.js",
-		require => File["/home/nodeuser/bootstrap"]
+	file { "/home/nodeuser/.ssh/authorized_keys":
+		source => "/root/.ssh/authorized_keys",
+		require => File["/home/nodeuser/.ssh"]
 	}
-	file { "/home/nodeuser/current":
-		ensure => link,
-		target => "/home/nodeuser/bootstrap",
-		require => File['/home/nodeuser/bootstrap/app.js']
+	file { "/home/nodeuser/projects":
+		ensure => directory,
+		group => 'nodeuser',
+		owner => 'nodeuser',
+		require => File["/home/nodeuser"]
 	}
+	# file { "/home/nodeuser/bootstrap":
+	# 	ensure => directory,
+	# 	require => User["nodeuser"]
+	# }
+	# file { "/home/nodeuser/bootstrap/app.js":
+	# 	source => "/plans/app.js",
+	# 	require => File["/home/nodeuser/bootstrap"]
+	# }
+	# file { "/home/nodeuser/current":
+	# 	ensure => link,
+	# 	target => "/home/nodeuser/bootstrap",
+	# 	require => File['/home/nodeuser/bootstrap/app.js']
+	# }
+	# file { "/home/nodeuser/restart_pm2":
+	# 	source => "/plans/restart_pm2",
+	# 	mode => "ugo+rx",
+	# 	require => File['/home/nodeuser']
+	# }
+	# exec { "set-home":
+	# 	command => "/bin/echo 'export HOME=/home/nodeuser' >> /home/nodeuser/.bashrc",
+	# 	unless => "/bin/grep -qe 'export HOME' -- /home/nodeuser/.bashrc",
+	# 	require => File["/home/nodeuser"]
+	# }
 	exec { "get-nave":								
 		command => "/usr/bin/wget https://raw.github.com/isaacs/nave/master/nave.sh -O /usr/local/bin/nave",
 		creates => "/usr/local/bin/nave",
@@ -161,25 +183,19 @@ class nodejs {
   		require => Exec['get-nave']
 	}
 	exec { "node":								
-		command => "/usr/local/bin/nave usemain 0.10.12",
+		command => "/usr/local/bin/nave usemain 0.10.13",
 		creates => "/usr/local/bin/node",
+		# onlyif => "/usr/bin/test `node --version` != 'v0.10.13'",
 		user => root,
 		require => File['/usr/local/bin/nave']
 	}
-	exec { "install-pm2":		
+	exec { "install-up":		
 	 	environment => 'HOME=/root',					
-		command => "/usr/local/bin/npm install -g pm2",
-		creates => "/usr/local/bin/pm2",
+		command => "/usr/local/bin/npm install -g up",
+		creates => "/usr/local/bin/up",
 		user => root,
 		require => Exec['node']
 	}
-	exec { "start-pm2":								
-	 	environment => 'HOME=/home/nodeuser',					
-		command => "/usr/local/bin/pm2 start app.js -i max",
-		cwd => "/home/nodeuser/current",
-		user => nodeuser,
-		require => [Exec['install-pm2'], File['/home/nodeuser/current']]
-	}	
 }
 
 include firewall

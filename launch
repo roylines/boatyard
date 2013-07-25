@@ -8,7 +8,7 @@ fi
 
 DROPLET_NAME=$1
 DROPLET_SIZEID=66
-DROPLET_IMAGEID=365680 # centos 6.4 x64
+DROPLET_IMAGEID=562354 # centos 6.4 x64 (use tugboat images -g to see them)
 DROPLET_REGIONID=1
 SHIP_TYPE=$2
 
