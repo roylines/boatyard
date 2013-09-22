@@ -191,7 +191,7 @@ class nodejs {
 	}
 	exec { "install-up":		
 	 	environment => 'HOME=/root',					
-		command => "/usr/local/bin/npm install -g up",
+		command => "/usr/local/bin/npm install -g up-time",
 		creates => "/usr/local/bin/up",
 		user => root,
 		require => Exec['node']
