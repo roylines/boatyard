@@ -34,6 +34,8 @@ class nodejs {
 	}
 	file { "/home/nodeuser/.ssh/authorized_keys":
 		source => "/root/.ssh/authorized_keys",
+		group => 'nodeuser',
+		owner => 'nodeuser',
 		require => File["/home/nodeuser/.ssh"]
 	}
 	file { "/home/nodeuser/projects":
@@ -55,9 +57,14 @@ class nodejs {
 	exec { "node":								
 		command => "/usr/local/bin/nave usemain 0.10.26",
 		creates => "/usr/local/bin/node",
-		# onlyif => "/usr/bin/test `node --version` != 'v0.10.13'",
 		user => root,
 		require => File['/usr/local/bin/nave']
+	}
+	exec { "naught":								
+		command => "/usr/local/bin/npm install -g naught",
+		creates => "/usr/local/bin/naught",
+		user => root,
+		require => Exec['node']
 	}
 }
 
@@ -72,11 +79,14 @@ class mongo {
     ensure => "latest",
     require => Yumrepo["mongorepo"]
   }
-	exec { "start-mongo":								
-		command => "/sbin/service mongod start",
-		creates => "/var/run/mongo.pid",
+	exec { "ensure-mongo-runs-after-reboot":								
+		command => "/sbin/chkconfig mongod on",
 		require => Package["mongodb-org"]
 	}
+  service { "mongod":
+    ensure=>"running",
+		require => Package["mongodb-org"]
+  }
 }
 
 include firewall

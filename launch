@@ -17,6 +17,10 @@ if [ ! -d "./plans/$SHIP_TYPE" ]; then
 fi
 
 source "./plans/$SHIP_TYPE/plan.cfg"
+echo "Searching for $DROPLET_IMAGE_NAME..."
+
+DROPLET_IMAGEID=`tugboat images --global | grep -i "$DROPLET_IMAGE_NAME" | sed 's/^.*id: \([0-9]*\),.*/\1/'`
+echo "Found $DROPLET_IMAGE_NAME as $DROPLET_IMAGEID"
 
 tugboat info $DROPLET_NAME
 
