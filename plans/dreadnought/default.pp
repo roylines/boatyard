@@ -15,10 +15,56 @@ class nodejs {
   package { "wget":
     ensure => latest
   }
+  package { "tar":
+    ensure => latest
+  }
+  package { "gcc":
+    ensure => latest
+  }
+  package { "gcc-c++":
+    ensure => latest
+  }
+  package { "kernel-devel":
+    ensure => latest
+  }
 	user { "nodeuser":
 		ensure => present,
 		comment => "user that nodejs applications run under",
 		managehome => true
+	}
+  exec { "get-authbind":								
+		command => "/usr/bin/wget http://ftp.debian.org/debian/pool/main/a/authbind/authbind_1.2.0.tar.gz -O /usr/local/src/authbind_1.2.0.tar.gz",
+		creates => "/usr/local/src/authbind_1.2.0.tar.gz",
+		user => root,
+    require => Package["wget"]
+	}
+  exec { "untar-authbind":								
+		command => "/bin/tar -zxvf authbind_1.2.0.tar.gz",
+    cwd => "/usr/local/src",
+		creates => "/usr/local/src/authbind_1.2.0",
+		user => root,
+    require => [Package["tar"], Exec["get-authbind"]]
+	}
+  exec { "make-authbind":								
+		command => "/usr/bin/make",
+    cwd => "/usr/local/src/authbind-1.2.0",
+		creates => "/usr/local/src/authbind-1.2.0/authbind",
+		user => root,
+    require => [Exec["untar-authbind"], Package["gcc"], Package["gcc-c++"], Package["kernel-devel"]]
+	}
+  exec { "install-authbind":								
+		command => "/usr/bin/make install",
+    cwd => "/usr/local/src/authbind-1.2.0",
+		creates => "/usr/local/bin/authbind",
+		user => root,
+    require => Exec["make-authbind"]
+	}
+	file { "/etc/authbind/byport/80":
+		ensure => present,
+    mode => '0755',
+		group => 'nodeuser',
+		owner => 'nodeuser',
+		require => [User["nodeuser"], Exec["install-authbind"]]
 	}
 	file { "/home/nodeuser":
 		ensure => directory,
